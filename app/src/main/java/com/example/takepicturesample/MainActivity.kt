@@ -20,6 +20,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.fragment.app.FragmentTransaction
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import net.weg.wemob.commons.services.dialog.FullscreenFragmnet
 import java.io.File
@@ -28,6 +29,7 @@ import java.io.InputStream
 
 class MainActivity : AppCompatActivity() {
 
+    private lateinit var takePictureViewModel: TakePictureViewModel
     private lateinit var requestPermissionLauncher: ActivityResultLauncher<String>
     private lateinit var buttonShowTags: ImageView
     private var exifData: Exif = Exif()
@@ -36,6 +38,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         setupRequestPermissionLauncherResult()
+
+        takePictureViewModel = ViewModelProvider(this).get(TakePictureViewModel::class.java)
 
         findViewById<Button>(R.id.button).setOnClickListener {
             requestPermissionToCapturePhotoIfNeeded()
@@ -74,12 +78,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**  Open the camera to capture photo. */
-    var tempUri: Uri? = null
+
     private fun capturePhoto() {
         Log.d("layon.f", "capturePhoto()")
         lifecycleScope.launchWhenStarted {
             getNewTempFileUri().let { uri ->
-                tempUri = uri
+                Log.d("layon.f", "capturePhoto() tempUri = $uri")
+                takePictureViewModel.tempUri = uri
                 takeImageResult.launch(uri)
             }
         }
@@ -93,7 +98,7 @@ class MainActivity : AppCompatActivity() {
         path.mkdir()
 
         val tmpFile =
-            File.createTempFile("avatar", ".png", path)
+            File.createTempFile("img", ".png", path)
                 .apply {
                     createNewFile()
                     deleteOnExit()
@@ -109,9 +114,11 @@ class MainActivity : AppCompatActivity() {
     /**  Note the change result of camera. */
     private val takeImageResult =
         registerForActivityResult(ActivityResultContracts.TakePicture()) { isSuccess ->
+
             if (isSuccess) {
                 Log.d("layon.f", "takeImageResult isSuccess")
-                tempUri?.let { uri ->
+                Log.d("layon.f", "takeImageResult tempUri: ${takePictureViewModel.tempUri}")
+                takePictureViewModel.tempUri?.let { uri ->
                     var bitmap = MediaStore.Images.Media.getBitmap(
                         this.contentResolver,
                         uri
@@ -225,7 +232,7 @@ class MainActivity : AppCompatActivity() {
                 TAG_THUMBNAIL_IMAGE_LENGTH =
                     it.getAttribute(ExifInterface.TAG_THUMBNAIL_IMAGE_LENGTH)
                 TAG_THUMBNAIL_IMAGE_WIDTH = it.getAttribute(ExifInterface.TAG_THUMBNAIL_IMAGE_WIDTH)
-                TAG_THUMBNAIL_ORIENTATION = it.getAttribute(ExifInterface.TAG_THUMBNAIL_ORIENTATION)
+                //TAG_THUMBNAIL_ORIENTATION = it.getAttribute(ExifInterface.TAG_THUMBNAIL_ORIENTATION)
             }
         }
     }
